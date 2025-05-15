@@ -2,7 +2,8 @@
 #        'python runpolyreg.py [input]' to continue from existing data
 # Prerequisite: You must have Intel modules loaded
 order = 4 # highest order of fitting polynomial
-all_coords = True # explicity print all coordinates, even if unchanging
+all_coords = False # explicity print all coordinates, even if unchanging
+symmetrize = False # automatically generate symmetry-equivalent data
 
 # import modules
 import os
@@ -38,18 +39,24 @@ def getlatestSLURM(directory: str) -> str:
     SLURM_files = [ f.name for f in os.scandir(directory) if (f.is_file() and ("slurm-" in f.name)) ]
     SLURM_nums = [ int(filename[6:-4]) for filename in SLURM_files ]
     SLURM_nums.sort(reverse = True)
+    print(SLURM_nums)
+    print(SLURM_nums[0])
     last_SLURM = "slurm-" + str(SLURM_nums[0]) + ".out"
     return directory + "/" + last_SLURM
 
-def getener(directory: str) -> str:
-    '''retrieves energy from a completed CFOUR calculation
+def getener(directory: str) -> list:
+    '''retrieves energies from a completed CFOUR calculation
     directory: path to directory containing CFOUR calculation
-    returns energy as a string'''
+    returns energies as strings in a list'''
     f = open(getlatestSLURM(directory), "r")
     lines = f.readlines()
     f.close()
     # maybe insert a check here that the calculation converged
-    return lines[-2].split()[-2]
+    eners = []
+    for line in lines:
+        if "Total EOMEA-CCSD electronic energy" in line:
+            eners.append(line.split()[-2])
+    return eners
 
 # ----------------------------------------------------------------------------
 #         main body of code
@@ -66,31 +73,34 @@ for directory in dirs:
     E = getener(directory)
     intgeoms.append(int_c)
     eners.append(E)
-    # b1 symmetrization
-    if int_c[3] != 0:
-        sym_c = int_c.copy()
-        sym_c[3] = -1*int_c[3]
-        intgeoms.append(sym_c)
-        eners.append(E)
-    # b2 symmetrization
-    if int_c[4] != 0 or int_c[5] != 0:
-        sym_c = int_c.copy()
-        sym_c[4], sym_c[5] = -1*int_c[4], -1*int_c[5]
-        intgeoms.append(sym_c)
-        eners.append(E)
-    # b1 and b2 symmetrization
-    if int_c[3] != 0 and (int_c[4] != 0 or int_c[5] != 0):
-        sym_c = int_c.copy()
-        sym_c[3], sym_c[4], sym_c[5] = -1*int_c[3], -1*int_c[4], -1*int_c[5]
-        intgeoms.append(sym_c)
-        eners.append(E)
+    if symmetrize:
+        # b1 symmetrization
+        if int_c[3] != 0:
+            sym_c = int_c.copy()
+            sym_c[3] = -1*int_c[3]
+            intgeoms.append(sym_c)
+            eners.append(E)
+        # b2 symmetrization
+        if int_c[4] != 0 or int_c[5] != 0:
+            sym_c = int_c.copy()
+            sym_c[4], sym_c[5] = -1*int_c[4], -1*int_c[5]
+            intgeoms.append(sym_c)
+            eners.append(E)
+        # b1 and b2 symmetrization
+        if int_c[3] != 0 and (int_c[4] != 0 or int_c[5] != 0):
+            sym_c = int_c.copy()
+            sym_c[3], sym_c[4], sym_c[5] = -1*int_c[3], -1*int_c[4], -1*int_c[5]
+            intgeoms.append(sym_c)
+            eners.append(E)
 intgeoms = np.array(intgeoms)
 
 # determine which coordinates differ between calculations
 # i.e., don't use unchanging internal coordinates in the fit
 diff_coords = []
 for coord in range(np.shape(intgeoms)[1]):
-    if all_coords or len(np.unique(intgeoms[:, coord])) != 1:
+    rounded = np.round(intgeoms[:, coord], 7)
+    if all_coords or len(np.unique(rounded)) != 1:
+    #if all_coords or len(np.unique(intgeoms[:, coord])) != 1:
         diff_coords.append(coord)
 
 # read already existing data
@@ -121,7 +131,8 @@ for point in range(npoints): # for each geometry
     f.write("\n")
     for coord in diff_coords: # write each coordinate
         f.write(format(displacement[coord], "5.2f") + '   ') # 'displacement/0.529177211' to convert Angstroms to Bohr radii
-    f.write(eners[point]) # write energy
+    for energy in eners[point]: # write energy
+        f.write("   " + energy)
 f.close()
 print("\npolyreg input file written, now running polyreg")
 
