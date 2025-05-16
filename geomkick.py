@@ -1,3 +1,4 @@
+orbitals = [24, 25] 
 cores = 1 # number of processor cores to use
 
 # module import
@@ -51,7 +52,7 @@ H:PVTZ-X2C
 %excite*
 1
 1
-1  0  24  0  1.0
+1  0  {ORB}  0  1.0
 
 
 """
@@ -496,21 +497,27 @@ def prepcalc(intdisp = [0]*6, directory: str = "TEST"):
             os.system("rm -r " + directory)
         else:
             sys.exit("The program terminated because you chose not to overwrite the directory.")
-    # copy required files into new directory
-    os.system("mkdir " + directory)
-    filewrite(SLURMtxt.format(name = directory, n = str(cores)), directory + '/script.sh') # SLURM script
-    filewrite(GENBAStxt,  directory + "/GENBAS") # GENBAS
     # convert internal to Cartesian coordinates
     newgeom = int_to_cart(intdisp, directory)
     # create CFOUR input file ("ZMAT")
-    atoms = ["SR", "N ", "H ", "H "]
     cartstr = ""
     for atom in range(len(atoms)):
         cartstr += atoms[atom]
         for coord in newgeom[atom]:
             cartstr += format(coord, "15.8f")
         cartstr += "\n"
-    filewrite(ZMATtxt.format(GM = cartstr, GB = str(cores*3)), directory + '/ZMAT')
+    # copy required files into new directory
+    os.system("mkdir " + directory)
+    atoms = ["SR", "N ", "H ", "H "]
+    for orb in orbitals: # for each root
+        subdir = directory + "/" + str(orb)
+        os.system("mkdir " + subdir)
+        filewrite(SLURMtxt.format(name = directory + str(orb), n = str(cores)), subdir + '/script.sh') # SLURM script
+        filewrite(GENBAStxt, subdir + "/GENBAS") # GENBAS
+        filewrite(ZMATtxt.format(GM = cartstr, GB = str(cores*3), ORB = str(orb), subdir + '/ZMAT')
+        # submit CFOUR job to SLURM
+        rv = subprocess.run(["sbatch", "script.sh"], cwd="./" + subdir, capture_output=True)
+        print(rv.stdout.decode('utf8'))
     # write .xyz file to view in Avogadro
     newgeom = np.array(newgeom)*0.529177211
     atoms = ["Sr", "N ", "H ", "H "]
@@ -521,9 +528,6 @@ def prepcalc(intdisp = [0]*6, directory: str = "TEST"):
             cartstr += format(coord, "13.6f")
         cartstr += "\n"
     filewrite(cartstr, directory + '/geom.xyz')
-    # submit CFOUR job to SLURM
-    rv = subprocess.run(["sbatch", "script.sh"], cwd="./" + directory, capture_output=True)
-    print(rv.stdout.decode('utf8'))
 
 # ----------------------------------------------------------------------------
 #         main body of code

@@ -20,7 +20,7 @@ def filecheck(fl: str):
 
 def getintcoord(directory: str):
     '''retrieve internal coordinate geometry
-    directory: path to directory containing intgeom
+    directory: path to directory containing intgeomch
     returns internal coordinate geometry (defined by intcfl)
         it is a list with 6 float elements, each corresponding to one of the 6 internal coordinates
         STRE (distance coordinates) are in Angstroms and all others (angular coordinates) are in radians'''
@@ -68,9 +68,12 @@ intgeoms = []
 eners = []
 dirs = [ f.name for f in os.scandir("./") if f.is_dir() ]
 for directory in dirs:
-    print(f"Processing folder: {directory}")
     int_c = getintcoord(directory)
-    E = getener(directory)
+    subdirs = [ int(f.name) for f in os.scandir("./" + directory) if f.is_dir() ]
+    orbs = sorted(subdirs)
+    E = []
+    for orb in orbs:
+        E += getener(directory + '/' + str(orb))
     intgeoms.append(int_c)
     eners.append(E)
     if symmetrize:
@@ -116,10 +119,10 @@ if len(sys.argv) > 1:
 # create input file for polyreg
 npoints = len(intgeoms)
 f = open("input", "w")
-f.write(str(order)             + "\n") # maximum polynomial order
-f.write(str(nOldPts + npoints) + "\n") # number of points
-f.write(str(len(diff_coords))  + "\n") # number of fitted coordinates
-f.write("1.0")                         # energy conversion factor
+#f.write(str(order)             + "\n") # maximum polynomial order
+#f.write(str(nOldPts + npoints) + "\n") # number of points
+#f.write(str(len(diff_coords))  + "\n") # number of fitted coordinates
+#f.write("1.0")                         # energy conversion factor
 # re-add already existing data
 if len(sys.argv) > 1:
     f.write("\n")
