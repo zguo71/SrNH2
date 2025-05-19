@@ -1,5 +1,6 @@
 orbitals = [24, 25] 
 cores = 1 # number of processor cores to use
+geomtest = False #If true, alvagadro file will be generated for each geometry, but cfour will not be run
 
 # module import
 import numpy as np
@@ -380,7 +381,7 @@ xcfour
 cd $workdir
 
 /bin/rm -rf $tmpdir
-rm bmatrix bummer cart2intin cart2intls cartgrd GENBAS geom geom.xyz intcfl intgeomch script.sh ZMAT
+rm GENBAS script.sh ZMAT
 """
 
 def filewrite(text: str, location: str):
@@ -497,37 +498,46 @@ def prepcalc(intdisp = [0]*6, directory: str = "TEST"):
             os.system("rm -r " + directory)
         else:
             sys.exit("The program terminated because you chose not to overwrite the directory.")
+    os.system("mkdir " + directory)
     # convert internal to Cartesian coordinates
     newgeom = int_to_cart(intdisp, directory)
     # create CFOUR input file ("ZMAT")
+    atoms = ["SR", "N ", "H ", "H "]
     cartstr = ""
     for atom in range(len(atoms)):
         cartstr += atoms[atom]
         for coord in newgeom[atom]:
             cartstr += format(coord, "15.8f")
         cartstr += "\n"
-    # copy required files into new directory
-    os.system("mkdir " + directory)
-    atoms = ["SR", "N ", "H ", "H "]
-    for orb in orbitals: # for each root
-        subdir = directory + "/" + str(orb)
-        os.system("mkdir " + subdir)
-        filewrite(SLURMtxt.format(name = directory + str(orb), n = str(cores)), subdir + '/script.sh') # SLURM script
-        filewrite(GENBAStxt, subdir + "/GENBAS") # GENBAS
-        filewrite(ZMATtxt.format(GM = cartstr, GB = str(cores*3), ORB = str(orb), subdir + '/ZMAT')
-        # submit CFOUR job to SLURM
-        rv = subprocess.run(["sbatch", "script.sh"], cwd="./" + subdir, capture_output=True)
-        print(rv.stdout.decode('utf8'))
-    # write .xyz file to view in Avogadro
-    newgeom = np.array(newgeom)*0.529177211
-    atoms = ["Sr", "N ", "H ", "H "]
-    cartstr = "4\n\n"
-    for atom in range(len(atoms)):
-        cartstr += ' ' + atoms[atom] + ' '
-        for coord in newgeom[atom]:
-            cartstr += format(coord, "13.6f")
-        cartstr += "\n"
-    filewrite(cartstr, directory + '/geom.xyz')
+    if not geomtest: # copy required files into new directory
+        for orb in orbitals: # for each root
+            subdir = directory + "/" + str(orb)
+            os.system("mkdir " + subdir)
+            filewrite(SLURMtxt.format(name = directory + str(orb), n = str(cores)), subdir + '/script.sh') # SLURM script
+            filewrite(GENBAStxt, subdir + "/GENBAS") # GENBAS
+            filewrite(ZMATtxt.format(GM = cartstr, GB = str(cores*3), ORB = str(orb)), subdir + '/ZMAT')
+            # submit CFOUR job to SLURM
+            rv = subprocess.run(["sbatch", "script.sh"], cwd="./" + subdir, capture_output=True)
+            print(rv.stdout.decode('utf8'))
+        os.system("rm " + 
+                  directory + "/bmatrix " + 
+                  directory + "/bummer " + 
+                  directory + "/cart2intin " +
+                  directory + "/cart2intls " +
+                  directory + "/cartgrd " +
+                  directory + "/geom " +
+                  directory + "/intcfl " +
+                  directory + "/intgeomch")
+    else: # write .xyz file to view in Avogadro
+        newgeom = np.array(newgeom)*0.529177211
+        atoms = ["Sr", "N ", "H ", "H "]
+        cartstr = "4\n\n"
+        for atom in range(len(atoms)):
+            cartstr += ' ' + atoms[atom] + ' '
+            for coord in newgeom[atom]:
+                cartstr += format(coord, "13.6f")
+            cartstr += "\n"
+        filewrite(cartstr, directory + '/geom.xyz')
 
 # ----------------------------------------------------------------------------
 #         main body of code
