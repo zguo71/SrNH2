@@ -1,4 +1,4 @@
-orbitals = [24, 25] 
+orbitals = [25, 26, 27] 
 cores = 1 # number of processor cores to use
 geomtest = False #If true, alvagadro file will be generated for each geometry, but cfour will not be run
 
@@ -569,7 +569,10 @@ def main(start, end):
                                     x = [i, j, k, l, m, n]
                                     print(f"count = {count}  disp: {x}")
                                     folder_name = f"{fval(i)}_{fval(j)}_{fval(k)}_{fval(l)}_{fval(m)}_{fval(n)}"
-                                    prepcalc(x, folder_name)
+                                    if os.path.exists(folder_name):
+                                        print("Already calculated")
+                                    else:
+                                        prepcalc(x, folder_name)
 
 # manual
 #main(start, end)
@@ -580,6 +583,6 @@ while last_submitted <= end:
     # check how many jobs are running
     rv = subprocess.check_output(['squeue -u $USER'], shell = True, text = True)
     batch_size = 400 - len(rv.split('\n')) # how many jobs to run this time
-    main(last_submitted + 1, last_submitted + batch_size) # run the jobs
-    last_submitted += batch_size
+    main(last_submitted + 1, last_submitted + batch_size//3) # run the jobs
+    last_submitted += batch_size//3
     time.sleep(120) # wait for the submitted jobs to run
