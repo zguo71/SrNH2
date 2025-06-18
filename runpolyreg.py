@@ -3,7 +3,7 @@
 # Prerequisite: You must have Intel modules loaded
 order = 4 # highest order of fitting polynomial
 all_coords = False # explicity print all coordinates, even if unchanging
-symmetrize = False # automatically generate symmetry-equivalent data
+symmetrize = True # automatically generate symmetry-equivalent data
 
 # import modules
 import os
