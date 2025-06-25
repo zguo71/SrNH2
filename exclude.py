@@ -1,20 +1,14 @@
-input_file = "input"
-output_file = "input.new"
-ref_energy = -3233.597872877419377
+input_file = "input_xabc"
+output_file = "input_new"
+ref_energy = [-3233.597872877419377, -3233.532946475688732, -3233.530968466364357, -3233.524213783323830]
 threshold_wavenumber = 2000
 hartree_to_wavenumber = 219474.63137
 
-with open(input_file, 'r') as f:
-    lines = f.readlines()
+with open(input_file, 'r') as fin, open(output_file, 'w') as fout:
+    for line in fin:
+        parts = line.split()
+        energies = list(map(float, parts[-4:]))
+        rel_cm = [(e - ref_energy[i]) * hartree_to_wavenumber for i, e in enumerate(energies)]
 
-with open(output_file, 'w') as f:
-    for line in lines[4:]:
-        abse = float(line.split()[-1])
-        rele = abse - ref_energy
-        rele_cm = rele * hartree_to_wavenumber
-        if rele_cm <= threshold_wavenumber:
-            f.write(line)
-
-
-
-    
+        if any(val <= threshold_wavenumber for val in rel_cm):
+            fout.write(line)
