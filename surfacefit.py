@@ -2,6 +2,7 @@
 input_filename = 'input_xabc'
 output_filename = 'fitted_output.txt'
 ref_energy = [-3233.597872877419377, -3233.532946475688732, -3233.530968466364357, -3233.524213783323830] 
+#ref_energy = [-732.93748280939246, -732.867103376558248, -732.864626241796600, -732.855458075144952] #CaNH2
 polynomial_degree = 2
 
 #module imports
