@@ -12,6 +12,7 @@ E_lim = int(sys.argv[2]) if len(sys.argv) > 2 else 2000 #in wavenumbers
 au2cm = 219474.63137
 col_names = ['c1', 'c2', 'c3', 'c4', 'c5', 'c6', 'X', 'A', 'B', 'C']
 ref_E = [-3233.597872877419377, -3233.532946475688732, -3233.530968466364357, -3233.524213783323830]  
+#ref_E = [-732.93748280939246, -732.867103376558248, -732.864626241796600, -732.855458075144952] #for CaNH2
 
 # Calculate energy gaps
 df = pd.read_csv('input_xabc', header = None, delim_whitespace=True, names = col_names)
