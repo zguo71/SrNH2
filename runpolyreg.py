@@ -62,6 +62,7 @@ def getener(directory: str) -> list:
 #         main body of code
 # ----------------------------------------------------------------------------
 min1 = np.array([2.26268918, 1.43506504, 1.81432190, 0.0, 0.0, 0.0]) # internal coordinate geom of ground state minimum of SrNH2
+#min1 = np.array([2.13933521, 1.43344077, 1.82046465, 0.0, 0.0, 0.0]) # internal coordinate geom of ground state minimum of CaNH2
 
 # for each directory, get the geometry and CFOUR result energy
 intgeoms = []
