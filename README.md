@@ -1,8 +1,11 @@
-This repository contains code we've used in our research on laser cooling of strontium amide.
+This repository contains code we have used in our research on laser cooling of strontium and calcium amides.
+
+## Surface fitting
 
 | File  | Description |
 | ------------- | ------------- |
-| geomkick.py | Creates new geometries using optimized ground state energy. create ZMAT file and submit it |
+| geomkick.py | Creates new geometries of SrNH<sub>2</sub> using optimized ground state energy. Creates and submits ZMAT file. |
+| geomkickCA.py | Creates new geometries of CaNH<sub>2</sub> using optimized ground state energy. Creates and submits ZMAT file. |
 | runpolyreg.py | grep all the energies in the slurm file and then create the input file for surface fitting |
 | surface-fit.py | Do the surface fitting with scikit learn in python |
 | surfacefit.py | An improved, more readable version of surface-fit.py |
@@ -13,3 +16,10 @@ This repository contains code we've used in our research on laser cooling of str
 | merge.py | Combine <i>ab initio</i> data from the ground and excited electronic states into one file |
 | min.py | Identify the minimum energy for each electronic state |
 | slurmscan.py | Identify which <i>ab initio</i> calculations were not successfully started |
+
+## Surface analysis
+
+| File  | Description |
+| ------------- | ------------- |
+| opt.py | Performs gradient descent optimization of the fitted potential energy surface |
+| carthess.py | Evaluates the Cartesian Hessian to calculate the harmonic vibrational frequencies |
