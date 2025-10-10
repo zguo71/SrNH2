@@ -8,7 +8,13 @@ from sklearn.preprocessing import PolynomialFeatures
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error
 
-freq2cm = 1378999.78
+#bohr2m = 0.529177249e-10
+#hartree2joule = 4.35974434e-18
+#speed_of_light = 299792458
+#avogadro = 6.0221413e+23
+#vib_constant = math.sqrt((avogadro*hartree2joule*1000)/(bohr2m*bohr2m))/(2*math.pi*speed_of_light*100)
+freq2cm = 1378999.78 * 2 * np.pi
+ht2cm = 219474.63137
 
 #Read input_xabc
 # cart2int input to convert Cartesian to internal coordinates ("cart2intin")
@@ -42,10 +48,11 @@ cartgrdtxt = """    0.739462D-07   0.107719D-01   0.359672D-02
    0.106949D-07  -0.150151D-02  -0.199053D-02"""
 
 #Minimum and displacement
-min1 = np.array([2.26268918, 1.43506504, 1.81432190, 0.0, 0.0, 0.0]) # ground state minimum of SrNH2
-#min2 = min1 - np.array([0.0018816240404717782, -0.00019452011911748083, 0.004615402721580975, -1.0436147772922731e-14, 3.160192575933109e-15, 4.742061925542671e-15])
+min1 = np.array([2.26268918, 1.43506504, 1.81432190, 0.0, 0.0, 0.0]) # ground state minimum of SrNH2 from cfour
+#min2 is the actual surface minimum by subtracting the geom difference from opt.py
 min2 = min1 - np.array([0.0019200113255312713, -0.0002240549094083047, 0.005224254081080706, -3.376642705258177e-14, 3.3387948329920475e-15, 1.8286039123597266e-14])
-loaded_model = joblib.load('model')
+print(min2)
+loaded_model = joblib.load('model4')
 
 def get_COL_dir() -> str:
     '''returns the directory of COLUMBUS'''
@@ -145,7 +152,7 @@ cur_geom = [0.00000000, 0.00000000, -0.68198419,
         0.00000000, 0.00000000, 3.59387835, 
         -1.51059587, 0.00000000, 4.77508354,
         1.51059587, 0.00000000, 4.77508354]
-h = 0.0001
+h = 0.001
 
 #Energy for minimum
 E0 = getsurfE(cur_geom)
@@ -156,6 +163,7 @@ for i in range(len(cur_geom)):
     displaced = cur_geom.copy()
     displaced[i] += h
     dE[i] = getsurfE(displaced)
+print("dE")
 print(dE-E0)
 
 #Pair-wise displacement
@@ -166,6 +174,7 @@ for i in range(len(cur_geom)):
         displaced[i] += h
         displaced[j] += h
         d2E[i,j] = getsurfE(displaced)
+print("d2E")
 print(d2E-E0)
 #finite difference hessian
 HESS = np.empty((12,12))
@@ -174,13 +183,15 @@ for i in range(len(cur_geom)):
         HESS[i,j] = (d2E[i,j] - dE[i] - dE[j] + E0) / h**2
         if i != j: 
             HESS[j,i] = HESS[i,j]
-
+print("HESS")
+print(HESS)
 mass_hess = mass_matrix() * HESS
 eigenvalues, eigenvectors = np.linalg.eigh(mass_hess)
+print("eigenvalues")
 print(eigenvalues)
 np.set_printoptions(precision=3, suppress=True, linewidth=np.inf)
 
-freq_cm = np.sqrt(eigenvalues) * freq2cm
-
+freq_cm = np.sqrt(eigenvalues) * ht2cm
+print("freq")
 print(freq_cm)
 
