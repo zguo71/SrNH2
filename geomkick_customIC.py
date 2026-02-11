@@ -363,7 +363,7 @@ K            1.     BEND   6     1.        4.        2.
 SLURMtxt = """#!/bin/bash
 #SBATCH --job-name={name}
 #SBATCH -p shared
-#SBATCH -A dyarkon1
+#SBATCH -A lcheng24
 #SBATCH -N 1
 #SBATCH -t 1:0:0
 #SBATCH --ntasks-per-node=1
