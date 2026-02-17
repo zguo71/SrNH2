@@ -1,9 +1,9 @@
-orbitals = [24, 25, 26, 27] 
+orbitals = [24] 
 cores = 1 # number of processor cores to use
 geomtest = False #If true, alvagadro file will be generated for each geometry, but cfour will not be run
 A2B = 1.8897259886
 use_custom_internal_coords = True
-
+bh2ag = 0.529177
 
 # module import
 import numpy as np
@@ -12,6 +12,7 @@ import subprocess
 import sys
 import time
 print("\nModules imported\n")
+DEG2RAD = np.pi / 180.0
 
 # obtain location of cart2int.x
 def get_COL_dir() -> str:
@@ -430,6 +431,69 @@ def getintcoord(directory: str):
         intgeom.append(float(line))
     return intgeom
 
+def angle_deg(a, b, c):
+        v1 = a - b 
+        v2 = c - b
+        v1_norm = v1 / np.linalg.norm(v1)
+        v2_norm = v2 / np.linalg.norm(v2)
+        cosang = np.dot(v1, v2) / (np.linalg.norm(v1) * np.linalg.norm(v2))
+        if cosang > 1.0:
+            cosang = 1.0
+        elif cosang < -1.0: 
+            cosang = -1.0
+        return np.arccos(cosang) * 180.0 / np.pi
+
+def angle_SrN_to_NHH_plane_rad(cart):
+
+    Sr = np.array(cart[0])
+    N = np.array(cart[1])
+    H1 = np.array(cart[2])
+    H2 = np.array(cart[3])
+    v = Sr - N
+    n = np.cross((H1 - N), (H2 - N))
+    v_norm = v / np.linalg.norm(v)
+    n_norm = n / np.linalg.norm(n)
+    if (np.linalg.norm(v) < 1e-15) or (np.linalg.norm(n) < 1e-15):
+        print("if ran")
+        return 0.0
+    s = np.dot(v_norm, n_norm)
+    print(s)
+    if s > 1:
+        s = 1
+    if s < -1:
+        s = -1
+    return np.arcsin(s)
+
+def cart2int(cart):
+    
+    r0 = np.array(cart[0])
+    r1 = np.array(cart[1])
+    r2 = np.array(cart[2])
+    r3 = np.array(cart[3])
+
+    zhat = np.array([0.0, 0.0, 1.0])
+
+    v_SrN = r1 - r0    #Sr-N bond vector
+    v_SrN_normal = v_SrN / np.linalg.norm(v_SrN)
+
+    R01   = np.linalg.norm(r0 - r1) #Sr-N bondlength
+    R12   = np.linalg.norm(r1 - r2) #N-H1 bondlength
+    R13   = np.linalg.norm(r1 - r3) #N-H2 bondlength
+
+    A012  = angle_deg(r0, r1, r2)   #SrNH1 angle
+    A013  = angle_deg(r0, r1, r3)   #SrNH2 angle
+    A231  = angle_deg(r2, r1, r3)   #HNH angle
+
+    internal = np.zeros(6)
+    SQRT2 = np.sqrt(2.0);
+    internal[0] = R01 * bh2ag                                   #IC1: SrN stretching
+    internal[1] = ((R12 + R13) / SQRT2) * bh2ag                 #IC2: Symmetric stretching of NH bonds
+    internal[2] = A231 * DEG2RAD                                #HNH angle in radians
+    internal[3] = angle_SrN_to_NHH_plane_rad(cart)              #IC4: SrN to NHH plane angle
+    internal[4] = ((R12 - R13) / SQRT2) * bh2ag                 #IC5: Assymmetric stretching of NH bonds
+    internal[5] = ((A013 - A012) / SQRT2) * DEG2RAD             #IC6: SrNH1 - SrNH2 angle
+    return internal
+
 #Internal coordinate definittion
 def internal_2_cartesian(coords, directory):
     IC1, IC2, IC3, IC4, IC5, IC6 = coords
@@ -439,8 +503,8 @@ def internal_2_cartesian(coords, directory):
     N = np.array([0.0, 0.0, 0.0])
 
     # bond lengths
-    NH1 = (IC2 + IC5) / 2
-    NH2 = (IC2 - IC5) / 2
+    NH1 = (IC2 + IC5) / np.sqrt(2)
+    NH2 = (IC2 - IC5) / np.sqrt(2)
     SrN = IC1
 
     # place Hs
@@ -454,7 +518,7 @@ def internal_2_cartesian(coords, directory):
 
     # place Sr
     OOP = IC4
-    SrX = np.sin(OOP) * SrN
+    SrX = - np.sin(OOP) * SrN
     Zproj = np.sqrt(SrN**2 - SrX**2)
     bendangle = IC6
     SrZ = np.cos(bendangle) * Zproj
@@ -477,6 +541,14 @@ def int_to_cart(intdisp = [0]*6, directory: str = "."):
     if use_custom_internal_coords:
         min1 = np.array([2.26268918, 1.43506504, 1.81432190, 0.0, 0.0, 0.0])
         newgeom = internal_2_cartesian(min1 + intdisp, directory)
+        cartnew = []
+        for i in ['Sr', 'N', 'H1', 'H2']:
+            cartnew.append(newgeom[i])
+        new_int = cart2int(cartnew)
+        int_geom_diff = new_int - (min1 + intdisp)
+        for coord in range(len(int_geom_diff)):
+            if abs(int_geom_diff[coord]) > 0.00001:
+                 print("WARNING: Internal coordinate discrepancy of " + str(int_geom_diff[coord]) + " in coordinate " + str(coord + 1))    
         return [newgeom['Sr'], newgeom['N'], newgeom['H1'], newgeom['H2']]
     else:
         filewrite(geomtxt,    directory + "/geom")       # geom
@@ -555,9 +627,12 @@ def prepcalc(intdisp = [0]*6, directory: str = "TEST"):
             filewrite(SLURMtxt.format(name = directory + str(orb), n = str(cores)), subdir + '/script.sh') # SLURM script
             filewrite(GENBAStxt, subdir + "/GENBAS") # GENBAS
             filewrite(ZMATtxt.format(GM = cartstr, GB = str(cores*3), ORB = str(orb)), subdir + '/ZMAT')
+            print("finished prep files")
             # submit CFOUR job to SLURM
+            print("run")
             rv = subprocess.run(["sbatch", "script.sh"], cwd="./" + subdir, capture_output=True)
             print(rv.stdout.decode('utf8'))
+            print("did run")
         #os.system("rm " +
         #          directory + "/bmatrix " +
         #          directory + "/bummer " +
@@ -591,18 +666,11 @@ def fval(val):
 def main(start, end):
     count = 0
     for i in [0.0]:
-        for j in [0.0]:
+        for j in [0.2, 0.4, -0.2]:
             for k in [0.0]:
-                for l in [0, 0.2, 0.4, 0.6, 0.8, 1.0]:
-                    for m in [0.0]:
+                for l in [0]:
+                    for m in [0.2, 0.4, -0.2]:
                         for n in [0.0]:
-                            if ((abs(l) <= 0.1 and abs(n) <= 1.0) or
-                                (abs(l) <= 0.4 and abs(n) <= 0.9) or
-                                (abs(l) <= 0.6 and abs(n) <= 0.8) or
-                                (abs(l) <= 0.7 and abs(n) <= 0.7) or
-                                (abs(l) <= 0.9 and abs(n) <= 0.6) or
-                                (abs(l) <= 1.0 and abs(n) <= 0.5)
-                                  ):
                              count += 1
                              if count >= start and count <= end:
                                 x = [i, j, k, l, m, n]
